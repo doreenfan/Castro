@@ -1,1 +1,5 @@
+ifeq ($(USE_MAESTRO_INIT), TRUE)
 
+CEXE_sources += CastroMaestroInit.cpp
+
+endif
