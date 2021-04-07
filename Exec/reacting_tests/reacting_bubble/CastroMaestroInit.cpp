@@ -4,7 +4,7 @@
 
 using namespace amrex;
 
-void Castro::MAESTRO_init ()
+void Castro::MAESTRO_init (MultiFab& state)
 {
     BL_PROFILE("Castro::MAESTRO_init()");
 
