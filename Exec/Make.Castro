@@ -262,12 +262,7 @@ ifeq ($(USE_RAD), TRUE)
 endif
 
 ifeq ($(USE_MAESTRO_INIT), TRUE)
-   DEFINES +=  -DBL_NOLINEVALUES -DBL_PARALLEL_IO -DMAESTRO_INIT
-   CEXE_headers += AMReX_VisMF.H
-   CEXE_sources += AMReX_VisMF.cpp
-#   FEXE_sources += FABUTIL_$(DIM)D.F
-   VPATH_LOCATIONS   += $(AMREX_HOME)/Src/Extern/amrdata
-   INCLUDE_LOCATIONS += $(AMREX_HOME)/Src/Extern/amrdata
+  DEFINES +=  -DBL_NOLINEVALUES -DBL_PARALLEL_IO -DMAESTRO_INIT
 endif
 
 ifeq ($(USE_ROTATION), TRUE)

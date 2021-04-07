@@ -1,5 +1,9 @@
 ifeq ($(USE_MAESTRO_INIT), TRUE)
 
+CEXE_headers += maestro_queries.H
+
+CEXE_headers += Maestro_Data.H
+CEXE_sources += Maestro_Data.cpp
 CEXE_sources += CastroMaestroInit.cpp
 
 endif
