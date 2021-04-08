@@ -53,7 +53,7 @@ void MaestroData::read_params() {
     
     if (maestrodata::maestro_nspec == 0) {
         Print() << "WARNING: MAESTRO_nspec was not specified!\n"
-		<< "Setting nspec to default: " << NumSpec << "\n";
+		<< "Setting nspec to Castro default: " << NumSpec << "\n";
 	maestrodata::maestro_nspec = NumSpec;
     }
     
@@ -165,6 +165,9 @@ void MaestroData::setup() {
         std::string fileCharPtrString(fileCharPtr.dataPtr());
         std::istringstream is(fileCharPtrString, std::istringstream::in);
 
+	// read in header
+	std::getline(is, line);
+	
         // read in cell-centered base state
         for (int i = 0; i < npts_model; ++i) {
             std::getline(is, line);
