@@ -114,6 +114,9 @@ void MaestroData::setup() {
     auto maestro_var_names = pltfile->varNames();
     
     for (int lev = 0; lev <= finest_level; ++lev) {
+	// set default values to zero
+	state_mf[lev].setVal(0.);
+	
 	MultiFab::Copy(state_mf[lev], pltfile->get(lev, "rho"), 0, 0, 1, 0);
 	MultiFab::Copy(state_mf[lev], pltfile->get(lev, "rhoh"), 0, 1, 1, 0);
 
