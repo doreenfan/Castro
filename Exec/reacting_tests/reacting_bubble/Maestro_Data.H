@@ -32,7 +32,7 @@ class MaestroData {
     MaestroData();
 
     /// destructor
-    virtual ~MaestroData();
+    ~MaestroData();
 
     /// read maestro-related parameters from parameter file
     void read_params();

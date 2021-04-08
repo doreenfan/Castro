@@ -16,6 +16,12 @@ AMREX_GPU_MANAGED amrex::Real maestrodata::maestro_cutoff_density;
 AMREX_GPU_MANAGED int maestrodata::maestro_init_type;
 AMREX_GPU_MANAGED bool maestrodata::maestro_spherical;
 
+/// constructor
+MaestroData::MaestroData() = default;
+
+/// destructor
+MaestroData::~MaestroData() = default;
+
 //
 // Read in parameters from input file
 //
@@ -27,7 +33,7 @@ void MaestroData::read_params() {
 #include <maestro_queries.H>
     }
     
-    // ERRORS: omitted necessary parameters
+    // ERRORS: missing necessary parameters
     if (maestrodata::maestro_plotfile == "fillme") {
         Abort("ERROR: MAESTRO_plotfile was not specified!\n");
     }
@@ -57,7 +63,7 @@ void MaestroData::read_params() {
 // Initialize Maestro data
 // 
 void MaestroData::setup() {
-    /*
+    
     // set input parameters
     pltfile = new amrex::PlotFileData(maestrodata::maestro_plotfile);
     finest_level = pltfile->finestLevel();
@@ -98,17 +104,30 @@ void MaestroData::setup() {
     u_mf.resize(finest_level + 1);
     w0_mf.resize(finest_level + 1);
     for (int lev = 0; lev <= finest_level; ++lev) {
-	state_mf[lev].define(grid[lev], dmap[lev], 2 + maestrodata::maestro_nspec, 0);
+	state_mf[lev].define(grid[lev], dmap[lev], 2 + NumSpec, 0);
         u_mf[lev].define(grid[lev], dmap[lev], AMREX_SPACEDIM, 0);
         w0_mf[lev].define(grid[lev], dmap[lev], AMREX_SPACEDIM, 0);
     }
 
     // full states
+    // get list of variables in maestro plotfile
+    auto maestro_var_names = pltfile->varNames();
+    
     for (int lev = 0; lev <= finest_level; ++lev) {
 	MultiFab::Copy(state_mf[lev], pltfile->get(lev, "rho"), 0, 0, 1, 0);
 	MultiFab::Copy(state_mf[lev], pltfile->get(lev, "rhoh"), 0, 1, 1, 0);
-	for (int i = 0; i < maestrodata::maestro_nspec; ++i) {
-	    // get X for all species
+
+	// get all species
+	for (int i = 0; i < NumSpec; ++i) {
+	    std::string spec_string = "X(";
+	    spec_string += short_spec_names_cxx[i];
+	    spec_string += ")";
+
+	    // check that the species is in maestro plotfile
+	    auto r = std::find(std::begin(maestro_var_names), std::end(maestro_var_names), spec_string);
+	    if (r < std::end(maestro_var_names)) {
+		MultiFab::Copy(state_mf[lev], pltfile->get(lev, spec_string), 0, 2+i, 1, 0);
+	    }
 	}
     }
     
@@ -161,7 +180,7 @@ void MaestroData::setup() {
             tempbar[i] = std::stod(word);
         }
     }
-    */
+    
 }
 
 //

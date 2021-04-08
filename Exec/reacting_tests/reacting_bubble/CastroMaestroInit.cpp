@@ -14,6 +14,9 @@ void Castro::MAESTRO_init (MultiFab& state)
     
     amrex::Print() << "Initialize from MAESTROeX plotfile " << maestrodata::maestro_plotfile << "\n";
 
+    MaestroData maestro_data;
+    
+    maestro_data.read_params();
 
-
+    maestro_data.setup();
 }
