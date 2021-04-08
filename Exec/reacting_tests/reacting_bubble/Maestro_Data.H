@@ -40,13 +40,20 @@ class MaestroData {
     /// read in Maestro data from plot file
     void setup();
 
+    /// regrid Maestro data grid to Castro grid
+    void regrid(amrex::Vector<amrex::MultiFab>& state_mf,
+		amrex::Vector<amrex::MultiFab>& p0_mf,
+		amrex::Vector<amrex::MultiFab>& temp_mf,
+		amrex::Vector<amrex::MultiFab>& vel_mf,
+		amrex::Vector<amrex::MultiFab>& w0_mf);
+
     /// initialize Castro data using Maestro data
-    void init();
+    void init(amrex::MultiFab& state);
 
     ///
     /// write Castro plotfile for test case
     /// 
-    void test();
+    void test(amrex::MultiFab& state);
 
     
     /* private data members */
@@ -61,19 +68,19 @@ class MaestroData {
     amrex::Vector<amrex::Geometry> geom;
 
     // define Maestro multifabs
-    amrex::Vector<amrex::MultiFab> state_mf;  // includes rho, X, rhoh
-    amrex::Vector<amrex::MultiFab> p0_mf;
-    amrex::Vector<amrex::MultiFab> temp_mf;
-    amrex::Vector<amrex::MultiFab> u_mf;
-    amrex::Vector<amrex::MultiFab> w0_mf;
+    amrex::MultiFab state;  // includes rho, X, rhoh
+    amrex::MultiFab p0;
+    amrex::MultiFab temp;
+    amrex::MultiFab vel;
+    amrex::MultiFab w0;
 
     // define Maestro radial base states
-    RealVector r_cc_loc;
-    RealVector rho0;
-    RealVector rhoh0;
-    RealVector p0;
-    RealVector gamma1bar;
-    RealVector tempbar;    
+    RealVector r_model;
+    RealVector rho0_model;
+    RealVector rhoh0_model;
+    RealVector p0_model;
+    RealVector gamma1bar_model;
+    RealVector tempbar_model;    
 };
 
 #endif

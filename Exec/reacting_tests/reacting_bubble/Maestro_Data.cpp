@@ -88,8 +88,9 @@ void MaestroData::setup() {
     const auto dxFine = pltfile->cellSize(finest_level);
 
     // read input MultiFabs
-    p0_mf.resize(finest_level + 1);
-    temp_mf.resize(finest_level + 1);
+    Vector<MultiFab> p0_mf(finest_level + 1);
+    Vector<MultiFab> temp_mf(finest_level + 1);
+    
     for (int lev = 0; lev <= finest_level; ++lev) {
 	if (maestrodata::maestro_init_type == 1) {
 	    p0_mf[lev] = pltfile->get(lev, "p0");
@@ -100,12 +101,13 @@ void MaestroData::setup() {
     }
 
     // Note: state stores (rho, rhoh, X_k)
-    state_mf.resize(finest_level + 1);
-    u_mf.resize(finest_level + 1);
-    w0_mf.resize(finest_level + 1);
+    Vector<MultiFab> state_mf(finest_level + 1);  // includes rho, X, rhoh
+    Vector<MultiFab> vel_mf(finest_level + 1);
+    Vector<MultiFab> w0_mf(finest_level + 1);
+    
     for (int lev = 0; lev <= finest_level; ++lev) {
 	state_mf[lev].define(grid[lev], dmap[lev], 2 + NumSpec, 0);
-        u_mf[lev].define(grid[lev], dmap[lev], AMREX_SPACEDIM, 0);
+        vel_mf[lev].define(grid[lev], dmap[lev], AMREX_SPACEDIM, 0);
         w0_mf[lev].define(grid[lev], dmap[lev], AMREX_SPACEDIM, 0);
     }
 
@@ -128,7 +130,9 @@ void MaestroData::setup() {
 
 	    // check that the species is in maestro plotfile
 	    auto r = std::find(std::begin(maestro_var_names), std::end(maestro_var_names), spec_string);
-	    if (r < std::end(maestro_var_names)) {
+	    if (r == std::end(maestro_var_names)) {
+		Print() << "WARNING: Could not find " << spec_string << " in MAESTROeX plotfile!\n";
+	    } else {
 		MultiFab::Copy(state_mf[lev], pltfile->get(lev, spec_string), 0, 2+i, 1, 0);
 	    }
 	}
@@ -142,21 +146,26 @@ void MaestroData::setup() {
         w += (120 + i);
 
         for (int lev = 0; lev <= finest_level; ++lev) {
-            MultiFab::Copy(u_mf[lev], pltfile->get(lev, x), 0, i, 1, 0);
+            MultiFab::Copy(vel_mf[lev], pltfile->get(lev, x), 0, i, 1, 0);
             MultiFab::Copy(w0_mf[lev], pltfile->get(lev, w), 0, i, 1, 0);
         }
     }
 
-
+    
+    ///
+    /// Regrid maestro data onto Castro grid
+    ///
+    regrid(state_mf, p0_mf, temp_mf, vel_mf, w0_mf);
+    
     // model file (cell-centered)
     std::string line, word;
     int npts_model = maestrodata::maestro_npts_model;
-    r_cc_loc.resize(npts_model);
-    rho0.resize(npts_model);
-    rhoh0.resize(npts_model);
-    p0.resize(npts_model);
-    gamma1bar.resize(npts_model);
-    tempbar.resize(npts_model);
+    r_model.resize(npts_model);
+    rho0_model.resize(npts_model);
+    rhoh0_model.resize(npts_model);
+    p0_model.resize(npts_model);
+    gamma1bar_model.resize(npts_model);
+    tempbar_model.resize(npts_model);
     
     {
         std::string File(maestrodata::maestro_modelfile);
@@ -173,26 +182,34 @@ void MaestroData::setup() {
             std::getline(is, line);
             std::istringstream lis(line);
             lis >> word;
-	    r_cc_loc[i] = std::stod(word);
+	    r_model[i] = std::stod(word);
 	    lis >> word;
-            rho0[i] = std::stod(word);
+            rho0_model[i] = std::stod(word);
             lis >> word;
-            rhoh0[i] = std::stod(word);
+            rhoh0_model[i] = std::stod(word);
             lis >> word;
-            p0[i] = std::stod(word);
+            p0_model[i] = std::stod(word);
             lis >> word;
-            gamma1bar[i] = std::stod(word);
+            gamma1bar_model[i] = std::stod(word);
             lis >> word;
-            tempbar[i] = std::stod(word);
+            tempbar_model[i] = std::stod(word);
         }
     }
     
 }
 
+void MaestroData::regrid(amrex::Vector<amrex::MultiFab>& state_mf,
+	    amrex::Vector<amrex::MultiFab>& p0_mf,
+	    amrex::Vector<amrex::MultiFab>& temp_mf,
+	    amrex::Vector<amrex::MultiFab>& vel_mf,
+	    amrex::Vector<amrex::MultiFab>& w0_mf) {
+
+}
+
 //
 // Initialize Castro data using Maestro data
 //
-void MaestroData::init() {
+void MaestroData::init(MultiFab& state) {
     
     
 }
@@ -201,7 +218,7 @@ void MaestroData::init() {
 //
 // Test case: read in Maestro data and output on Castro grid
 //
-void MaestroData::test() {
+void MaestroData::test(MultiFab& state) {
     
     
 }
