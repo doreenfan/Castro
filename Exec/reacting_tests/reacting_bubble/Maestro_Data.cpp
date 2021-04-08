@@ -25,8 +25,8 @@ MaestroData::~MaestroData() = default;
 //
 // Read in parameters from input file
 //
-void MaestroData::read_params() {
-        
+void MaestroData::read_params()
+{        
     // read in maestro-related input parameters
     {
     ParmParse pp("castro");
@@ -55,14 +55,15 @@ void MaestroData::read_params() {
         Print() << "WARNING: MAESTRO_nspec was not specified!\n"
 		<< "Setting nspec to Castro default: " << NumSpec << "\n";
 	maestrodata::maestro_nspec = NumSpec;
-    }
-    
+    }   
 }
 
 //
 // Initialize Maestro data
 // 
-void MaestroData::setup() {
+void MaestroData::setup()
+{
+    BL_PROFILE("MaestroData::setup()");
     
     // set input parameters
     pltfile = new amrex::PlotFileData(maestrodata::maestro_plotfile);
@@ -154,6 +155,7 @@ void MaestroData::setup() {
     
     ///
     /// Regrid maestro data onto Castro grid
+    /// Initializes multifabs: state, p0, temp, vel, w0 
     ///
     regrid(state_mf, p0_mf, temp_mf, vel_mf, w0_mf);
     
@@ -199,17 +201,21 @@ void MaestroData::setup() {
 }
 
 void MaestroData::regrid(amrex::Vector<amrex::MultiFab>& state_mf,
-	    amrex::Vector<amrex::MultiFab>& p0_mf,
-	    amrex::Vector<amrex::MultiFab>& temp_mf,
-	    amrex::Vector<amrex::MultiFab>& vel_mf,
-	    amrex::Vector<amrex::MultiFab>& w0_mf) {
+			 amrex::Vector<amrex::MultiFab>& p0_mf,
+			 amrex::Vector<amrex::MultiFab>& temp_mf,
+			 amrex::Vector<amrex::MultiFab>& vel_mf,
+			 amrex::Vector<amrex::MultiFab>& w0_mf)
+{
+    BL_PROFILE("MaestroData::regrid()");
 
 }
 
 //
 // Initialize Castro data using Maestro data
 //
-void MaestroData::init(MultiFab& state) {
+void MaestroData::init(MultiFab& state)
+{
+    BL_PROFILE("MaestroData::init()");
     
     
 }

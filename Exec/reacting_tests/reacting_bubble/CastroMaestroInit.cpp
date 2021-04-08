@@ -19,4 +19,6 @@ void Castro::MAESTRO_init (MultiFab& state)
     maestro_data.read_params();
 
     maestro_data.setup();
+
+    maestro_data.init(state);
 }
