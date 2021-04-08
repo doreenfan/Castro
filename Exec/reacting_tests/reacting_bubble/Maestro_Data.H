@@ -48,12 +48,12 @@ class MaestroData {
 		amrex::Vector<amrex::MultiFab>& w0_mf);
 
     /// initialize Castro data using Maestro data
-    void init(amrex::MultiFab& state);
+    void init(amrex::MultiFab& s_in);
 
     ///
     /// write Castro plotfile for test case
     /// 
-    void test(amrex::MultiFab& state);
+    void test(amrex::MultiFab& s_in);
 
     
     /* private data members */

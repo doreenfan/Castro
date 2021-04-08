@@ -1,5 +1,6 @@
 #include <regex>
 
+#include <AMReX_VisMF.H>
 #include <AMReX_ParmParse.H>
 #include <Maestro_Data.H>
 #include <Castro.H>
@@ -208,23 +209,27 @@ void MaestroData::regrid(amrex::Vector<amrex::MultiFab>& state_mf,
 {
     BL_PROFILE("MaestroData::regrid()");
 
+    // DEBUG: write out data on initial maestro grid
+    VisMF::Write(state_mf[0], "maestro_state0");
+    
 }
 
 //
 // Initialize Castro data using Maestro data
 //
-void MaestroData::init(MultiFab& state)
+void MaestroData::init(MultiFab& s_in)
 {
     BL_PROFILE("MaestroData::init()");
     
-    
+    // DEBUG: write out final castro state
+    VisMF::Write(s_in, "castro_Snew");
 }
 
 
 //
 // Test case: read in Maestro data and output on Castro grid
 //
-void MaestroData::test(MultiFab& state) {
+void MaestroData::test(MultiFab& s_in) {
     
     
 }
