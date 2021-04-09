@@ -1,5 +1,9 @@
 #include <regex>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include <AMReX_VisMF.H>
 #include <AMReX_ParmParse.H>
 #include <Maestro_Data.H>
@@ -70,6 +74,7 @@ void MaestroData::setup()
     pltfile = new amrex::PlotFileData(maestrodata::maestro_plotfile);
     finest_level = pltfile->finestLevel();
 
+    // setup geometry
     const auto probLo = pltfile->probLo();
     const auto probHi = pltfile->probHi();
 
@@ -85,14 +90,16 @@ void MaestroData::setup()
         geom[lev].define(domain, &real_box);
     }
 
-    // setup geometry
-    const auto domainBoxFine = pltfile->probDomain(finest_level);
-    const auto dxFine = pltfile->cellSize(finest_level);
-
     // read input MultiFabs
-    Vector<MultiFab> p0_mf(finest_level + 1);
-    Vector<MultiFab> temp_mf(finest_level + 1);
+    p0_mf.resize(finest_level + 1);
+    temp_mf.resize(finest_level + 1);
+
+    for (int lev = 0; lev <= finest_level; ++lev) {
+	p0_mf[lev].define(grid[lev], dmap[lev], 1, 0);
+        temp_mf[lev].define(grid[lev], dmap[lev], 1, 0);
+    }
     
+    // store p0 and add pi if necessary
     for (int lev = 0; lev <= finest_level; ++lev) {
 	if (maestrodata::maestro_init_type == 1) {
 	    p0_mf[lev] = pltfile->get(lev, "p0");
@@ -103,9 +110,9 @@ void MaestroData::setup()
     }
 
     // Note: state stores (rho, rhoh, X_k)
-    Vector<MultiFab> state_mf(finest_level + 1);  // includes rho, X, rhoh
-    Vector<MultiFab> vel_mf(finest_level + 1);
-    Vector<MultiFab> w0_mf(finest_level + 1);
+    state_mf.resize(finest_level + 1);  // includes rho, X, rhoh
+    vel_mf.resize(finest_level + 1);
+    w0_mf.resize(finest_level + 1);
     
     for (int lev = 0; lev <= finest_level; ++lev) {
 	state_mf[lev].define(grid[lev], dmap[lev], 2 + NumSpec, 0);
@@ -154,12 +161,6 @@ void MaestroData::setup()
     }
 
     
-    ///
-    /// Regrid maestro data onto Castro grid
-    /// Initializes multifabs: state, p0, temp, vel, w0 
-    ///
-    regrid(state_mf, p0_mf, temp_mf, vel_mf, w0_mf);
-    
     // model file (cell-centered)
     std::string line, word;
     int npts_model = maestrodata::maestro_npts_model;
@@ -201,16 +202,27 @@ void MaestroData::setup()
     
 }
 
-void MaestroData::regrid(amrex::Vector<amrex::MultiFab>& state_mf,
-			 amrex::Vector<amrex::MultiFab>& p0_mf,
-			 amrex::Vector<amrex::MultiFab>& temp_mf,
-			 amrex::Vector<amrex::MultiFab>& vel_mf,
-			 amrex::Vector<amrex::MultiFab>& w0_mf)
+///
+/// Regrid maestro data onto Castro grid
+/// Initializes mstate 
+///
+void MaestroData::regrid(MultiFab& s_in)
 {
     BL_PROFILE("MaestroData::regrid()");
 
     // DEBUG: write out data on initial maestro grid
     VisMF::Write(state_mf[0], "maestro_state0");
+
+    // Castro grid
+    const amrex::Geometry& dgeom = DefaultGeometry();
+    const amrex::BoxArray& ba = s_in.boxArray();
+    const amrex::DistributionMapping& dm = s_in.DistributionMap();
+
+    // define new Maestro data grid
+    mstate.define(ba, dm, s_in.nComp(), s_in.nGrow());
+
+    mstate.setVal(0.);
+
     
 }
 
@@ -220,11 +232,176 @@ void MaestroData::regrid(amrex::Vector<amrex::MultiFab>& state_mf,
 void MaestroData::init(MultiFab& s_in)
 {
     BL_PROFILE("MaestroData::init()");
+
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (MFIter mfi(mstate, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
+	const Box& bx = mfi.tilebox();
+
+	initdata(bx, mstate.array(mfi));
+    }
+
+    MultiFab::Copy(s_in, mstate, 0, 0, mstate.nComp(), mstate.nGrow());
     
     // DEBUG: write out final castro state
     VisMF::Write(s_in, "castro_Snew");
 }
 
+void MaestroData::initdata(const Box& bx,
+			   Array4<Real> const& state)
+{
+    minpres = p0_model[maestrodata::maestro_npts_model-1];
+    
+    amrex::ParallelFor(bx,
+    [=] AMREX_GPU_HOST_DEVICE (int i, int j, int k)
+    {
+	// local variables
+	Real ekin, pressure, entropy;
+
+	eos_t eos_state;
+
+	// set pressure 
+	// state(i,j,k,UEDEN) = state(i,j,k,UEDEN);
+
+	if (maestrodata::maestro_init_type == 1 || maestrodata::maestro_init_type == 2) {
+
+	    // load pressure from our temporary storage field
+	    pressure = amrex::max(state(i,j,k,UEDEN),minpres);
+
+	    // compute e and T
+	    eos_state.p   = pressure;
+	    eos_state.rho = state(i,j,k,URHO);
+	    eos_state.T   = state(i,j,k,UTEMP);
+	    for (int n = 0; n < NumSpec; ++n) {
+		eos_state.xn[n]  = state(i,j,k,UFS+n);
+	    }
+
+	    eos(eos_input_rp, eos_state);
+
+	    // set tempbar
+	    // state(i,j,k,UTEMP) = state(i,j,k,UTEMP);
+	    state(i,j,k,UEINT) = eos_state.e;
+
+	    // compute kinetic energy
+	    ekin = 0.5*state(i,j,k,URHO)*(state(i,j,k,UMX)*state(i,j,k,UMX)
+					  + state(i,j,k,UMY)*state(i,j,k,UMY)
+#if AMREX_SPACEDIM == 3
+					  + state(i,j,k,UMZ)*state(i,j,k,UMZ)
+#endif
+					  );
+
+	    // convert velocity to momentum
+	    state(i,j,k,UMX) = state(i,j,k,UMX)*state(i,j,k,URHO);
+	    state(i,j,k,UMY) = state(i,j,k,UMY)*state(i,j,k,URHO);
+#if AMREX_SPACEDIM == 3
+	    state(i,j,k,UMZ) = state(i,j,k,UMZ)*state(i,j,k,URHO);
+#endif
+
+	    // compute rho*e
+	    state(i,j,k,UEINT) = state(i,j,k,URHO) * state(i,j,k,UEINT);
+
+	    // compute rho*E = rho*e + ke
+	    state(i,j,k,UEDEN) = state(i,j,k,UEINT) + ekin;
+
+	    // convert X to rhoX
+	    for (int n = 0; n < NumSpec; ++n) {
+		state(i,j,k,UFS+n) = state(i,j,k,URHO) * state(i,j,k,UFS+n);
+	    }
+
+	} else if (maestrodata::maestro_init_type == 3) {
+
+	    // load pressure from our temporary storage field
+	    pressure = amrex::max(state(i,j,k,UEDEN),minpres);
+
+	    // compute rho and e
+	    eos_state.T  = state(i,j,k,UTEMP);
+	    eos_state.p  = pressure;
+	    for (int n = 0; n < NumSpec; ++n) {
+		eos_state.xn[n] = state(i,j,k,UFS+n);
+	    }
+
+	    eos(eos_input_tp, eos_state);
+
+	    state(i,j,k,URHO)  = eos_state.rho;
+	    state(i,j,k,UEINT) = eos_state.e;
+
+	    // compute kinetic energy
+	    ekin = 0.5*state(i,j,k,URHO)*(state(i,j,k,UMX)*state(i,j,k,UMX)
+					  + state(i,j,k,UMY)*state(i,j,k,UMY)
+#if AMREX_SPACEDIM == 3
+					  + state(i,j,k,UMZ)*state(i,j,k,UMZ)
+#endif
+					  );
+
+	    // convert velocity to momentum
+	    state(i,j,k,UMX) = state(i,j,k,UMX)*state(i,j,k,URHO);
+	    state(i,j,k,UMY) = state(i,j,k,UMY)*state(i,j,k,URHO);
+#if AMREX_SPACEDIM == 3
+	    state(i,j,k,UMZ) = state(i,j,k,UMZ)*state(i,j,k,URHO);
+#endif
+
+	    // compute rho*e
+	    state(i,j,k,UEINT) = state(i,j,k,URHO) * state(i,j,k,UEINT);
+
+	    // compute rho*E = rho*e + ke
+	    state(i,j,k,UEDEN) = state(i,j,k,UEINT) + ekin;
+
+	    // convert X to rhoX
+	    for (int n = 0; n < NumSpec; ++n) {
+		state(i,j,k,UFS+n) = state(i,j,k,URHO) * state(i,j,k,UFS+n);
+	    }
+
+	} else if (maestrodata::maestro_init_type == 4) {
+
+	    // load pressure from our temporary storage field
+	    pressure = amrex::max(state(i,j,k,UEDEN),minpres);
+
+	    // load entropy from our temporary storage field
+	    entropy = state(i,j,k,UEINT);
+
+	    // compute kinetic energy
+	    ekin = 0.5*state(i,j,k,URHO)*(state(i,j,k,UMX)*state(i,j,k,UMX)
+					  + state(i,j,k,UMY)*state(i,j,k,UMY)
+#if AMREX_SPACEDIM == 3
+					  + state(i,j,k,UMZ)*state(i,j,k,UMZ)
+#endif
+					  );
+
+	    // compute rho, T, and e
+	    eos_state.p  = pressure;
+	    eos_state.s  = entropy;
+	    for (int n = 0; n < NumSpec; ++n) {
+		eos_state.xn[n] = state(i,j,k,UFS+n);
+	    }
+	
+	    eos(eos_input_ps, eos_state);
+	
+	    state(i,j,k,URHO)  = eos_state.rho;
+	    state(i,j,k,UEINT) = eos_state.e;
+	    state(i,j,k,UTEMP) = eos_state.T;
+
+	    // convert velocity to momentum
+	    state(i,j,k,UMX) = state(i,j,k,UMX)*state(i,j,k,URHO);
+	    state(i,j,k,UMY) = state(i,j,k,UMY)*state(i,j,k,URHO);
+#if AMREX_SPACEDIM == 3
+	    state(i,j,k,UMZ) = state(i,j,k,UMZ)*state(i,j,k,URHO);
+#endif
+
+	    // compute rho*e
+	    state(i,j,k,UEINT) = state(i,j,k,URHO) * state(i,j,k,UEINT);
+
+	    // compute rho*E = rho*e + ke
+	    state(i,j,k,UEDEN) = state(i,j,k,UEINT) + ekin;
+
+	    // convert X to rhoX
+	    for (int n = 0; n < NumSpec; ++n) {
+		state(i,j,k,UFS+n) = state(i,j,k,URHO) * state(i,j,k,UFS+n);
+	    }
+	
+	}
+    });
+}
 
 //
 // Test case: read in Maestro data and output on Castro grid

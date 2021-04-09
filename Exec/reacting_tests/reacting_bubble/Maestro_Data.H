@@ -41,14 +41,13 @@ class MaestroData {
     void setup();
 
     /// regrid Maestro data grid to Castro grid
-    void regrid(amrex::Vector<amrex::MultiFab>& state_mf,
-		amrex::Vector<amrex::MultiFab>& p0_mf,
-		amrex::Vector<amrex::MultiFab>& temp_mf,
-		amrex::Vector<amrex::MultiFab>& vel_mf,
-		amrex::Vector<amrex::MultiFab>& w0_mf);
+    void regrid(amrex::MultiFab& s_in);
 
     /// initialize Castro data using Maestro data
     void init(amrex::MultiFab& s_in);
+
+    void initdata(const amrex::Box& bx,
+		  amrex::Array4<amrex::Real> const& state);
 
     ///
     /// write Castro plotfile for test case
@@ -67,13 +66,19 @@ class MaestroData {
     amrex::Vector<amrex::DistributionMapping> dmap;
     amrex::Vector<amrex::Geometry> geom;
 
-    // define Maestro multifabs
-    amrex::MultiFab state;  // includes rho, X, rhoh
-    amrex::MultiFab p0;
-    amrex::MultiFab temp;
-    amrex::MultiFab vel;
-    amrex::MultiFab w0;
+    // define intermediate Maestro multifabs
+    amrex::Vector<amrex::MultiFab> state_mf;  // includes rho, X, rhoh
+    amrex::Vector<amrex::MultiFab> p0_mf;
+    amrex::Vector<amrex::MultiFab> temp_mf;
+    amrex::Vector<amrex::MultiFab> vel_mf;
+    amrex::Vector<amrex::MultiFab> w0_mf;
 
+    // define final Maestro multifab with all components
+    amrex::MultiFab mstate;
+
+    // minimum pressure
+    amrex::Real minpres;
+    
     // define Maestro radial base states
     RealVector r_model;
     RealVector rho0_model;
