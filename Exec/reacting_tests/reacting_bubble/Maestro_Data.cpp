@@ -251,7 +251,7 @@ void MaestroData::init(MultiFab& s_in)
 void MaestroData::initdata(const Box& bx,
 			   Array4<Real> const& state)
 {
-    minpres = p0_model[maestrodata::maestro_npts_model-1];
+    const Real minpres = p0_model[maestrodata::maestro_npts_model-1];
     
     amrex::ParallelFor(bx,
     [=] AMREX_GPU_HOST_DEVICE (int i, int j, int k)

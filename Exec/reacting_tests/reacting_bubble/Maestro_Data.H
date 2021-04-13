@@ -75,9 +75,6 @@ class MaestroData {
 
     // define final Maestro multifab with all components
     amrex::MultiFab mstate;
-
-    // minimum pressure
-    amrex::Real minpres;
     
     // define Maestro radial base states
     RealVector r_model;
