@@ -210,9 +210,6 @@ void MaestroData::regrid(MultiFab& s_in)
 {
     BL_PROFILE("MaestroData::regrid()");
 
-    // DEBUG: write out data on initial maestro grid
-    VisMF::Write(state_mf[0], "maestro_state0");
-
     // Castro grid
     const amrex::Geometry& dgeom = DefaultGeometry();
     const amrex::BoxArray& ba = s_in.boxArray();
@@ -220,9 +217,9 @@ void MaestroData::regrid(MultiFab& s_in)
 
     // define new Maestro data grid
     mstate.define(ba, dm, s_in.nComp(), s_in.nGrow());
-
     mstate.setVal(0.);
 
+    // put Maestro data onto new grid
     
 }
 
@@ -244,8 +241,6 @@ void MaestroData::init(MultiFab& s_in)
 
     MultiFab::Copy(s_in, mstate, 0, 0, mstate.nComp(), mstate.nGrow());
     
-    // DEBUG: write out final castro state
-    VisMF::Write(s_in, "castro_Snew");
 }
 
 void MaestroData::initdata(const Box& bx,
@@ -404,10 +399,18 @@ void MaestroData::initdata(const Box& bx,
 }
 
 //
-// Test case: read in Maestro data and output on Castro grid
+// Test for debugging: read in Maestro data and output on Castro grid
 //
 void MaestroData::test(MultiFab& s_in) {
     
+    // Write out data (level 0) on initial maestro grid
+    VisMF::Write(state_mf[0], "maestro_state0");
+
+    regrid(s_in);
+
+    init(s_in);
     
+    // Write out final castro state
+    VisMF::Write(s_in, "castro_Snew");
 }
 
