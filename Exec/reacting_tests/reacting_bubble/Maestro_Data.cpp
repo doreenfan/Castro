@@ -129,8 +129,18 @@ void MaestroData::setup()
 	state_mf[lev].setVal(0.);
 	
 	MultiFab::Copy(state_mf[lev], pltfile->get(lev, "rho"), 0, 0, 1, 0);
-	MultiFab::Copy(state_mf[lev], pltfile->get(lev, "rhoh"), 0, 1, 1, 0);
+	MultiFab::Copy(state_mf[lev], pltfile->get(lev, "h"), 0, 1, 1, 0);
 
+	// h -> e
+	// first divide p0 by rho
+	MultiFab::Divide(p0_mf[lev], state_mf[lev], 0, 0, 1, 0);
+
+	// e = h - p / rho
+	MultiFab::Subtract(state_mf[lev], p0_mf[lev], 0, 1, 1, 0);
+
+	// revert back p0
+	MultiFab::Multiply(p0_mf[lev], state_mf[lev], 0, 0, 1, 0);
+	
 	// get all species
 	for (int i = 0; i < NumSpec; ++i) {
 	    std::string spec_string = "X(";
@@ -220,7 +230,17 @@ void MaestroData::regrid(MultiFab& s_in)
     mstate.setVal(0.);
 
     // put Maestro data onto new grid
-    
+    int lev = finest_level;
+    while (geom[lev].CellSize() < dgeom.CellSize() && lev > 0) {
+	lev--;
+    }
+
+    MultiFab::Copy(mstate, state_mf[lev], 0, URHO, 1, 0);
+    MultiFab::Copy(mstate, state_mf[lev], 1, UEINT, 1, 0);
+    MultiFab::Copy(mstate, state_mf[lev], 2, UFS, NumSpec, 0);
+    MultiFab::Copy(mstate, p0_mf[lev], 0, UEDEN, 1, 0);
+    MultiFab::Copy(mstate, temp_mf[lev], 0, UTEMP, 1, 0);
+    MultiFab::Copy(mstate, vel_mf[lev], 0, UMX, AMREX_SPACEDIM, 0);
 }
 
 //

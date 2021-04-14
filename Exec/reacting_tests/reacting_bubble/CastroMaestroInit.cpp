@@ -20,7 +20,11 @@ void Castro::MAESTRO_init (MultiFab& state)
 
     maestro_data.setup();
 
-    maestro_data.regrid(state);
+    // maestro_data.regrid(state);
     
-    maestro_data.init(state);
+    // maestro_data.init(state);
+
+    // DEBUG 
+    maestro_data.test(state);
+    
 }
