@@ -112,12 +112,10 @@ void MaestroData::setup()
     // Note: state stores (rho, rhoh, X_k)
     state_mf.resize(finest_level + 1);  // includes rho, X, rhoh
     vel_mf.resize(finest_level + 1);
-    w0_mf.resize(finest_level + 1);
     
     for (int lev = 0; lev <= finest_level; ++lev) {
 	state_mf[lev].define(grid[lev], dmap[lev], 2 + NumSpec, 0);
         vel_mf[lev].define(grid[lev], dmap[lev], AMREX_SPACEDIM, 0);
-        w0_mf[lev].define(grid[lev], dmap[lev], AMREX_SPACEDIM, 0);
     }
 
     // full states
@@ -160,13 +158,10 @@ void MaestroData::setup()
     // velocities
     for (int i = 0; i < AMREX_SPACEDIM; ++i) {
         std::string x = "vel";
-        std::string w = "w0";
         x += (120 + i);
-        w += (120 + i);
 
         for (int lev = 0; lev <= finest_level; ++lev) {
             MultiFab::Copy(vel_mf[lev], pltfile->get(lev, x), 0, i, 1, 0);
-            MultiFab::Copy(w0_mf[lev], pltfile->get(lev, w), 0, i, 1, 0);
         }
     }
 

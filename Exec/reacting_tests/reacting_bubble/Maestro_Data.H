@@ -71,7 +71,6 @@ class MaestroData {
     amrex::Vector<amrex::MultiFab> p0_mf;
     amrex::Vector<amrex::MultiFab> temp_mf;
     amrex::Vector<amrex::MultiFab> vel_mf;
-    amrex::Vector<amrex::MultiFab> w0_mf;
 
     // define final Maestro multifab with all components
     amrex::MultiFab mstate;
