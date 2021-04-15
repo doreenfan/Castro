@@ -977,7 +977,7 @@ Castro::initData ()
 #endif
 
 #ifdef MAESTRO_INIT
-    MAESTRO_init(S_new);
+    MAESTRO_init();
 #else
     {
 

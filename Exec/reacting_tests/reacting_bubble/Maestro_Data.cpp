@@ -211,12 +211,12 @@ void MaestroData::setup()
 /// Regrid maestro data onto Castro grid
 /// Initializes mstate 
 ///
-void MaestroData::regrid(MultiFab& s_in)
+void MaestroData::regrid(const int level, amrex::MultiFab& s_in, 
+			 const amrex::Geometry& cgeom)
 {
     BL_PROFILE("MaestroData::regrid()");
 
     // Castro grid
-    const amrex::Geometry& dgeom = DefaultGeometry();
     const amrex::BoxArray& ba = s_in.boxArray();
     const amrex::DistributionMapping& dm = s_in.DistributionMap();
 
@@ -226,16 +226,30 @@ void MaestroData::regrid(MultiFab& s_in)
 
     // put Maestro data onto new grid
     int lev = finest_level;
-    while (geom[lev].CellSize() < dgeom.CellSize() && lev > 0) {
+    auto dx = cgeom.CellSize();
+    while (geom[lev].CellSize()[0] < dx[0] && lev > 0) {
 	lev--;
     }
 
-    MultiFab::Copy(mstate, state_mf[lev], 0, URHO, 1, 0);
-    MultiFab::Copy(mstate, state_mf[lev], 1, UEINT, 1, 0);
-    MultiFab::Copy(mstate, state_mf[lev], 2, UFS, NumSpec, 0);
-    MultiFab::Copy(mstate, p0_mf[lev], 0, UEDEN, 1, 0);
-    MultiFab::Copy(mstate, temp_mf[lev], 0, UTEMP, 1, 0);
-    MultiFab::Copy(mstate, vel_mf[lev], 0, UMX, AMREX_SPACEDIM, 0);
+    // DEBUG
+    Print() << "DEBUG: Maestro dx = " << geom[lev].CellSize()[0]
+	    << " , Castro dx = " << dx[0] << " \n";
+    
+    if (geom[lev].CellSize()[0] > dx[0]) {
+	// maestro grid is coarser than castro
+
+    } else if (geom[lev].CellSize()[0] < dx[0]) {
+	// maestro grid is finer than castro
+	
+    } else {
+	// grids are the same size
+	MultiFab::Copy(mstate, state_mf[lev], 0, URHO, 1, 0);
+	MultiFab::Copy(mstate, state_mf[lev], 1, UEINT, 1, 0);
+	MultiFab::Copy(mstate, state_mf[lev], 2, UFS, NumSpec, 0);
+	MultiFab::Copy(mstate, p0_mf[lev], 0, UEDEN, 1, 0);
+	MultiFab::Copy(mstate, temp_mf[lev], 0, UTEMP, 1, 0);
+	MultiFab::Copy(mstate, vel_mf[lev], 0, UMX, AMREX_SPACEDIM, 0);
+    }
 }
 
 //
@@ -416,16 +430,21 @@ void MaestroData::initdata(const Box& bx,
 //
 // Test for debugging: read in Maestro data and output on Castro grid
 //
-void MaestroData::test(MultiFab& s_in) {
-    
-    // Write out data (level 0) on initial maestro grid
-    VisMF::Write(state_mf[0], "maestro_state0");
+void MaestroData::test(const int level, MultiFab& s_in, 
+		       const amrex::Geometry& cgeom)
+{
 
-    regrid(s_in);
+    Print() << "MaestroData test case: level = " << level << " \n";
+    
+    // Write out data on initial maestro grid
+    int lev = std::min(level,finest_level);
+    VisMF::Write(state_mf[lev], "maestro_state" + std::to_string(lev));
+
+    regrid(level, s_in, cgeom);
 
     init(s_in);
     
     // Write out final castro state
-    VisMF::Write(s_in, "castro_Snew");
+    VisMF::Write(s_in, "castro_Snew" + std::to_string(level));
 }
 

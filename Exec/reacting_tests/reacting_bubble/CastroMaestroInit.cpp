@@ -4,13 +4,15 @@
 
 using namespace amrex;
 
-void Castro::MAESTRO_init (MultiFab& state)
+void Castro::MAESTRO_init ()
 {
     BL_PROFILE("Castro::MAESTRO_init()");
 
     if (AMREX_SPACEDIM > 2) {
 	amrex::Abort("ERROR: Restart from MAESTROeX only works for DIM=2.");
     }
+
+    MultiFab& S_new = get_new_data(State_Type);
     
     amrex::Print() << "Initialize from MAESTROeX plotfile " << maestrodata::maestro_plotfile << "\n";
 
@@ -20,11 +22,11 @@ void Castro::MAESTRO_init (MultiFab& state)
 
     maestro_data.setup();
 
-    // maestro_data.regrid(state);
+    // maestro_data.regrid(level, S_new, geom);
     
-    // maestro_data.init(state);
+    // maestro_data.init(S_new);
 
     // DEBUG 
-    maestro_data.test(state);
+    maestro_data.test(level, S_new, geom);
     
 }

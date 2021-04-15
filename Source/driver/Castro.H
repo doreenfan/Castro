@@ -370,7 +370,7 @@ public:
 #endif
 
 #ifdef MAESTRO_INIT
-    void MAESTRO_init (amrex::MultiFab& state);
+    void MAESTRO_init ();
 #endif
 
 
