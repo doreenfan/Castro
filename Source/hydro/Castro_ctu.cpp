@@ -81,7 +81,6 @@ Castro::consup_hydro(const Box& bx,
       update(i,j,k,USHK) = shk(i,j,k) / dt;
 #endif
 
-#ifndef RADIATION
     } else if (n == UMX) {
       // Add gradp term to momentum equation -- only for axisymmetric
       // coords (and only for the radial flux).
@@ -89,7 +88,6 @@ Castro::consup_hydro(const Box& bx,
       if (!mom_flux_has_p(0, 0, coord)) {
         update(i,j,k,UMX) += - (qx(i+1,j,k,GDPRES) - qx(i,j,k,GDPRES)) / dx[0];
       }
-#endif
     }
   });
 }
@@ -462,7 +460,7 @@ Castro::src_to_prim(const Box& bx,
       Real rhoinv = 1.0_rt / q_arr(i,j,k,QRHO);
 
       // get the needed derivatives
-      eos_t eos_state;
+      eos_rep_t eos_state;
       eos_state.T = q_arr(i,j,k,QTEMP);
       eos_state.rho = q_arr(i,j,k,QRHO);
       eos_state.e = q_arr(i,j,k,QREINT) * rhoinv;
