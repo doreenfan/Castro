@@ -22,11 +22,12 @@ void Castro::MAESTRO_init ()
 
     maestro_data.setup();
 
-    // maestro_data.regrid(level, S_new, geom);
+    // maestro_data.regrid(level, S_new, geom, grids, dmap);
     
     // maestro_data.init(S_new);
 
-    // DEBUG 
-    maestro_data.test(level, S_new, geom);
+    // DEBUG
+    // grids and dmap are at the appropriate level already
+    maestro_data.test(level, S_new, geom, grids, dmap);
     
 }

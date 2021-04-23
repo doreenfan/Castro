@@ -212,44 +212,50 @@ void MaestroData::setup()
 /// Initializes mstate 
 ///
 void MaestroData::regrid(const int level, amrex::MultiFab& s_in, 
-			 const amrex::Geometry& cgeom)
+			 const amrex::Geometry& cgeom,
+			 amrex::BoxArray& ba,
+			 amrex::DistributionMapping& dm)
 {
     BL_PROFILE("MaestroData::regrid()");
 
-    // Castro grid
-    const amrex::BoxArray& ba = s_in.boxArray();
-    const amrex::DistributionMapping& dm = s_in.DistributionMap();
-
-    // define new Maestro data grid
-    mstate.define(ba, dm, s_in.nComp(), s_in.nGrow());
-    mstate.setVal(0.);
-
     // put Maestro data onto new grid
-    int lev = finest_level;
-    auto dx = cgeom.CellSize();
-    while (geom[lev].CellSize()[0] < dx[0] && lev > 0) {
-	lev--;
-    }
-
-    // DEBUG
-    Print() << "DEBUG: Maestro dx = " << geom[lev].CellSize()[0]
-	    << " , Castro dx = " << dx[0] << " \n";
     
-    if (geom[lev].CellSize()[0] > dx[0]) {
-	// maestro grid is coarser than castro
+    // if this is a new level that does not exist in Maestro plotfile
+    if (level > finest_level) {
 
-    } else if (geom[lev].CellSize()[0] < dx[0]) {
-	// maestro grid is finer than castro
-	
+	// define new Maestro data grid using Castro grid info
+	mstate.define(ba, dm, s_in.nComp(), s_in.nGrow());
+	mstate.setVal(0.);
+
+
     } else {
-	// grids are the same size
-	MultiFab::Copy(mstate, state_mf[lev], 0, URHO, 1, 0);
-	MultiFab::Copy(mstate, state_mf[lev], 1, UEINT, 1, 0);
-	MultiFab::Copy(mstate, state_mf[lev], 2, UFS, NumSpec, 0);
-	MultiFab::Copy(mstate, p0_mf[lev], 0, UEDEN, 1, 0);
-	MultiFab::Copy(mstate, temp_mf[lev], 0, UTEMP, 1, 0);
-	MultiFab::Copy(mstate, vel_mf[lev], 0, UMX, AMREX_SPACEDIM, 0);
-    }
+	auto dx = cgeom.CellSize();
+
+	// DEBUG
+	Print() << "DEBUG: Maestro dx = " << geom[level].CellSize()[0]
+		<< " , Castro dx = " << dx[0] << " \n";
+    
+	if (geom[level].CellSize()[0] == dx[0]) {
+	    // grids are the same size
+	    ba = grid[level];
+	    dm = dmap[level];
+
+	    // define new Maestro data
+	    mstate.define(grid[level], dmap[level], s_in.nComp(), s_in.nGrow());
+	    mstate.setVal(0.);
+
+	    MultiFab::Copy(mstate, state_mf[level], 0, URHO, 1, 0);
+	    MultiFab::Copy(mstate, state_mf[level], 1, UEINT, 1, 0);
+	    MultiFab::Copy(mstate, state_mf[level], 2, UFS, NumSpec, 0);
+	    MultiFab::Copy(mstate, p0_mf[level], 0, UEDEN, 1, 0);
+	    MultiFab::Copy(mstate, temp_mf[level], 0, UTEMP, 1, 0);
+	    MultiFab::Copy(mstate, vel_mf[level], 0, UMX, AMREX_SPACEDIM, 0);
+	} else {
+	    // grids are not the same size
+	    Abort();  // not yet implemented
+
+	}
+    } // end if level > finest_level 
 }
 
 //
@@ -431,7 +437,9 @@ void MaestroData::initdata(const Box& bx,
 // Test for debugging: read in Maestro data and output on Castro grid
 //
 void MaestroData::test(const int level, MultiFab& s_in, 
-		       const amrex::Geometry& cgeom)
+		       const amrex::Geometry& cgeom,
+		       amrex::BoxArray& ba,
+		       amrex::DistributionMapping& dm)
 {
 
     Print() << "MaestroData test case: level = " << level << " \n";
@@ -440,7 +448,7 @@ void MaestroData::test(const int level, MultiFab& s_in,
     int lev = std::min(level,finest_level);
     VisMF::Write(state_mf[lev], "maestro_state" + std::to_string(lev));
 
-    regrid(level, s_in, cgeom);
+    regrid(level, s_in, cgeom, ba, dm);
 
     init(s_in);
     

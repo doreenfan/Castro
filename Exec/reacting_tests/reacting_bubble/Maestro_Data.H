@@ -42,7 +42,9 @@ class MaestroData {
 
     /// regrid Maestro data grid to Castro grid
     void regrid(const int level, amrex::MultiFab& s_in, 
-		const amrex::Geometry& cgeom);
+		const amrex::Geometry& cgeom,
+		amrex::BoxArray& ba,
+		amrex::DistributionMapping& dm);
 
     /// initialize Castro data using Maestro data
     void init(amrex::MultiFab& s_in);
@@ -54,7 +56,9 @@ class MaestroData {
     /// write Castro plotfile for test case
     /// 
     void test(const int level, amrex::MultiFab& s_in, 
-	      const amrex::Geometry& cgeom);
+	      const amrex::Geometry& cgeom,
+	      amrex::BoxArray& ba,
+	      amrex::DistributionMapping& dm);
 
     
     /* private data members */
